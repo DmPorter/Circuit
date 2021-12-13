@@ -1,0 +1,73 @@
+library IEEE;
+use IEEE.STD_LOGIC_1164.ALL;
+use IEEE.STD_LOGIC_ARITH.ALL;
+use IEEE.STD_LOGIC_UNSIGNED.ALL;
+
+
+entity synchronizer is
+
+Port ( 
+	clk: in std_logic;
+	error: in std_logic;
+	reset: in std_logic;
+	clk_ena: out std_logic;--идет на декодер
+	K_signal_in: in std_logic_vector(7 downto 0); --вход сигнала с декодера
+	shift_out: out std_logic; --идет на регистр
+	count: out std_logic_vector(3 downto 0)
+);
+end synchronizer;
+
+architecture archi of synchronizer is 
+type stp_type is (s0, s1);
+signal stp : stp_type;
+signal counter_up: std_logic_vector(3 downto 0);
+signal up_count: std_logic;
+signal up_stp: std_logic;
+begin 
+	process (clk, reset) 
+		begin
+				if (reset = '1') then 
+					stp <= s1;
+					shift_out <= '1';
+				elsif (clk'event and clk = '0') then
+					case(stp) is
+						when s0 => --состояние работы
+							shift_out <= '1'; --регистр постоянно сдвигает
+							up_stp <= '0'; -- выход clk_ena
+							if error = '1' then
+								stp <= s1;
+							end if;
+						when s1 => -- состояние синхронизации
+							up_stp <= '1'; --декодер постоянно меняет информацию
+							shift_out <= '1';
+							if (K_signal_in = "10111100") then --если синхронизация произошла
+								stp <= s0;
+								up_stp <= '0';
+								shift_out <= '0';
+							end if;
+						end case;
+				end if;
+	end process; 
+	
+	process (clk, reset)
+		begin
+				 if(reset='1') then
+						counter_up <= "0000";
+						up_count <= '0';
+				 elsif(clk'event and clk = '1') then
+				 if stp = s0 then
+						if counter_up = "1010" then
+							counter_up <= "0000";
+							up_count <= '1'; -- каждые 10 тактов дает сигнал на декодер
+						else
+							counter_up <= counter_up + x"1";
+							up_count <= '0';
+						end if;
+				elsif	stp = s1 then 
+						counter_up <= "0001";
+				end if;
+			end if;
+		end process;
+	count <= counter_up;
+	clk_ena <= (up_count or up_stp);
+end archi; 
