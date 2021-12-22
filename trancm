@@ -1,0 +1,54 @@
+library IEEE;
+use IEEE.STD_LOGIC_1164.ALL;
+use IEEE.STD_LOGIC_ARITH.ALL;
+use IEEE.STD_LOGIC_UNSIGNED.ALL;
+
+entity transmitter is
+
+Port ( 
+         reset : in std_logic;  
+         clk : in std_logic ;                 
+         KI : in std_logic ;            
+         datain : in std_logic_vector(7 downto 0); 
+         dataout : out std_logic
+			);
+end transmitter;
+
+architecture Structural of transmitter is
+component shift10_1 is 
+	port(clk, SI, SLOAD, reset : in std_logic; 
+			  D  : in std_logic_vector(9 downto 0); 
+			  dataout : out std_logic
+			  ); 
+	end component;
+
+	component enc_8b10b is 
+	port( 
+			  reset : in std_logic;          
+        clk : in std_logic ;           
+        ena : in std_logic ;           
+        KI : in std_logic ;            
+        datain : in std_logic_vector(7 downto 0); 
+        dataout : out std_logic_vector(9 downto 0) 
+			  ); 
+	end component;
+	
+	component counter is
+    Port ( clk: in std_logic;
+           reset: in std_logic; 
+           load: out std_logic 
+     );
+	end component;
+	
+	signal enc_out_s : std_logic_vector(9 downto 0);
+	signal load_shift_s : std_logic;
+	
+	begin
+	
+	c1: shift10_1 port map (clk, '0', load_shift_s, reset, enc_out_s, dataout);
+
+	c2: enc_8b10b port map (reset, clk, load_shift_s, KI, datain, enc_out_s);
+
+	c3: counter port map (clk, reset, load_shift_s);
+	
+	end Structural;
